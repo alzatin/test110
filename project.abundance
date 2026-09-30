@@ -1,123 +1,123 @@
 {
-  "atomType": "Molecule",
-  "x": 0,
-  "y": 0,
-  "uniqueID": "id-29",
-  "name": "matchFaces",
-  "ioValues": [
-    {
-      "name": "Face1",
-      "ioValue": "__GEOMETRY_INPUT__"
-    },
-    {
-      "name": "Face2",
-      "ioValue": "__GEOMETRY_INPUT__"
-    },
-    {
-      "name": "Shapetomove",
-      "ioValue": "__GEOMETRY_INPUT__"
-    },
-    {
-      "name": "edge",
-      "ioValue": "__GEOMETRY_INPUT__"
-    }
-  ],
-  "topLevel": true,
-  "allAtoms": [
-    {
-      "atomType": "Output",
-      "x": 0.98,
-      "y": 0.5,
-      "uniqueID": "id-30",
-      "ioValues": [
+    "atomType": "Molecule",
+    "x": 0,
+    "y": 0,
+    "uniqueID": "id-29",
+    "name": "test110",
+    "ioValues": [
         {
-          "name": "number or geometry",
-          "ioValue": "__GEOMETRY_INPUT__"
-        }
-      ]
-    },
-    {
-      "atomType": "Input",
-      "x": 0.025384615384615384,
-      "y": 0.15384615384615385,
-      "uniqueID": "id-32",
-      "name": "Face1",
-      "type": "faceselect",
-      "selectedFaceData": {}
-    },
-    {
-      "atomType": "Input",
-      "x": 0.025384615384615384,
-      "y": 0.24615384615384617,
-      "uniqueID": "id-35",
-      "name": "Face2",
-      "type": "faceselect",
-      "selectedFaceData": {}
-    },
-    {
-      "atomType": "Input",
-      "x": 0.025384615384615384,
-      "y": 0.3384615384615385,
-      "uniqueID": "id-38",
-      "name": "Shapetomove",
-      "type": "geometry"
-    },
-    {
-      "atomType": "Code",
-      "x": 0.5339702760084926,
-      "y": 0.47678018575851394,
-      "uniqueID": "id-41",
-      "ioValues": [
-        {
-          "name": "targetFace",
-          "ioValue": "__GEOMETRY_INPUT__"
+            "name": "Face1",
+            "ioValue": "__GEOMETRY_INPUT__"
         },
         {
-          "name": "sourceShape",
-          "ioValue": "__GEOMETRY_INPUT__"
+            "name": "Face2",
+            "ioValue": "__GEOMETRY_INPUT__"
         },
         {
-          "name": "faceThatAligns",
-          "ioValue": "__GEOMETRY_INPUT__"
+            "name": "Shapetomove",
+            "ioValue": "__GEOMETRY_INPUT__"
+        },
+        {
+            "name": "edge",
+            "ioValue": "__GEOMETRY_INPUT__"
         }
-      ],
-      "interpreterVersion": 1,
-      "code": "/**\n * =========================================================================\n *  ABUNDANCE CODE ATOM — Align Mesh to Face\n * =========================================================================\n *\n *  Move an entire mesh/solid so that one of its faces becomes coplanar with\n *  a target face.\n *\n *  INPUTS\n *  ------\n *  targetFace: Assembly\n *    A singleton leaf containing a bare replicad.Face to match to.\n *    Must be a single face, not a composite assembly.\n *\n *  sourceShape: Assembly\n *    The entire solid/mesh to be moved and rotated.\n *\n *  faceThatAligns: Assembly\n *    A singleton leaf containing a bare replicad.Face from the source shape.\n *    This face will be aligned to match the target face.\n *\n *  RETURN VALUE\n *  ------------\n *  Returns the entire source shape rotated and translated so that the\n *  specified face is coplanar with the target face.\n *\n *  HOW IT WORKS\n *  ============\n *  1. Extracts target face center and normal\n *  2. Extracts source face (from source shape) center and normal\n *  3. Calculates rotation needed to align source face → target face\n *  4. Applies the rotation and translation to the ENTIRE source shape\n *  5. Returns the moved shape\n *\n * =========================================================================\n */\n\nfunction run(\n  targetFace: Assembly,\n  sourceShape: Assembly,\n  faceThatAligns: Assembly,\n): Assembly {\n  // ── Validation ────────────────────────────────────────────────────────────\n  if (!targetFace.isLeaf()) {\n    throw new Error(\"targetFace must be singleton leaf\");\n  }\n  if (!faceThatAligns.isLeaf()) {\n    throw new Error(\"faceThatAligns must be singleton leaf\");\n  }\n\n  let targetReplFace: replicad.Face;\n  if (targetFace.geometry instanceof replicad.Face) {\n    targetReplFace = targetFace.geometry;\n  } else {\n    throw new Error(\"targetFace must be a bare face\");\n  }\n\n  let sourceReplFace: replicad.Face;\n  if (faceThatAligns.geometry instanceof replicad.Face) {\n    sourceReplFace = faceThatAligns.geometry;\n  } else {\n    throw new Error(\"faceThatAligns must be a bare face\");\n  }\n\n  // ── Extract target face properties ────────────────────────────────────────\n  const targetCenter = targetReplFace.pointOnSurface(0.5, 0.5);\n  const targetNormal = targetReplFace.normalAt(targetCenter);\n\n  // ── Extract source face properties ────────────────────────────────────────\n  const sourceCenter = sourceReplFace.pointOnSurface(0.5, 0.5);\n  const sourceNormal = sourceReplFace.normalAt(sourceCenter);\n\n  // ── Calculate rotation to align source face to target face ────────────────\n  const rotationAxis = sourceNormal.cross(targetNormal);\n  const rotationAngle = sourceNormal.getAngle(targetNormal);\n\n  // ── Apply rotation and translation to the entire source shape ──────────────\n  // Transform the entire source shape (not just the face)\n  const result = sourceShape.onLeafs((leaf) => {\n    let transformed = leaf.geometry;\n\n    // Rotate the entire geometry\n    if (rotationAngle !== 0) {\n      transformed = transformed.rotate(rotationAngle, rotationAxis);\n    }\n\n    // Translate the entire geometry to align face centers\n    transformed = transformed.translate(\n      targetCenter.add(sourceCenter.multiply(-1))\n    );\n\n    return new Assembly({\n      ...leaf,\n      geometry: transformed,\n    });\n  });\n\n  if (result != null) {\n    return result;\n  } else {\n    throw new Error(\"result unexpectedly null\");\n  }\n}\n",
-      "compiledCode": "\"use strict\";\n/**\n * =========================================================================\n *  ABUNDANCE CODE ATOM — Align Mesh to Face\n * =========================================================================\n *\n *  Move an entire mesh/solid so that one of its faces becomes coplanar with\n *  a target face.\n *\n *  INPUTS\n *  ------\n *  targetFace: Assembly\n *    A singleton leaf containing a bare replicad.Face to match to.\n *    Must be a single face, not a composite assembly.\n *\n *  sourceShape: Assembly\n *    The entire solid/mesh to be moved and rotated.\n *\n *  faceThatAligns: Assembly\n *    A singleton leaf containing a bare replicad.Face from the source shape.\n *    This face will be aligned to match the target face.\n *\n *  RETURN VALUE\n *  ------------\n *  Returns the entire source shape rotated and translated so that the\n *  specified face is coplanar with the target face.\n *\n *  HOW IT WORKS\n *  ============\n *  1. Extracts target face center and normal\n *  2. Extracts source face (from source shape) center and normal\n *  3. Calculates rotation needed to align source face → target face\n *  4. Applies the rotation and translation to the ENTIRE source shape\n *  5. Returns the moved shape\n *\n * =========================================================================\n */\nfunction run(targetFace, sourceShape, faceThatAligns) {\n    // ── Validation ────────────────────────────────────────────────────────────\n    if (!targetFace.isLeaf()) {\n        throw new Error(\"targetFace must be singleton leaf\");\n    }\n    if (!faceThatAligns.isLeaf()) {\n        throw new Error(\"faceThatAligns must be singleton leaf\");\n    }\n    let targetReplFace;\n    if (targetFace.geometry instanceof replicad.Face) {\n        targetReplFace = targetFace.geometry;\n    }\n    else {\n        throw new Error(\"targetFace must be a bare face\");\n    }\n    let sourceReplFace;\n    if (faceThatAligns.geometry instanceof replicad.Face) {\n        sourceReplFace = faceThatAligns.geometry;\n    }\n    else {\n        throw new Error(\"faceThatAligns must be a bare face\");\n    }\n    // ── Extract target face properties ────────────────────────────────────────\n    const targetCenter = targetReplFace.pointOnSurface(0.5, 0.5);\n    const targetNormal = targetReplFace.normalAt(targetCenter);\n    // ── Extract source face properties ────────────────────────────────────────\n    const sourceCenter = sourceReplFace.pointOnSurface(0.5, 0.5);\n    const sourceNormal = sourceReplFace.normalAt(sourceCenter);\n    // ── Calculate rotation to align source face to target face ────────────────\n    const rotationAxis = sourceNormal.cross(targetNormal);\n    const rotationAngle = sourceNormal.getAngle(targetNormal);\n    // ── Apply rotation and translation to the entire source shape ──────────────\n    // Transform the entire source shape (not just the face)\n    const result = sourceShape.onLeafs((leaf) => {\n        let transformed = leaf.geometry;\n        // Rotate the entire geometry\n        if (rotationAngle !== 0) {\n            transformed = transformed.rotate(rotationAngle, rotationAxis);\n        }\n        // Translate the entire geometry to align face centers\n        transformed = transformed.translate(targetCenter.add(sourceCenter.multiply(-1)));\n        return new Assembly({\n            ...leaf,\n            geometry: transformed,\n        });\n    });\n    if (result != null) {\n        return result;\n    }\n    else {\n        throw new Error(\"result unexpectedly null\");\n    }\n}\n"
-    },
-    {
-      "atomType": "Input",
-      "x": 0.025384615384615384,
-      "y": 0.4307692307692308,
-      "uniqueID": "id-55",
-      "name": "edge",
-      "type": "edgeselect",
-      "selectedEdgeData": {}
-    }
-  ],
-  "allConnectors": [
-    {
-      "ap2Name": "targetFace",
-      "ap1ID": "id-32",
-      "ap2ID": "id-41"
-    },
-    {
-      "ap2Name": "faceThatAligns",
-      "ap1ID": "id-35",
-      "ap2ID": "id-41"
-    },
-    {
-      "ap2Name": "sourceShape",
-      "ap1ID": "id-38",
-      "ap2ID": "id-41"
-    },
-    {
-      "ap2Name": "number or geometry",
-      "ap1ID": "id-41",
-      "ap2ID": "id-30"
-    }
-  ],
-  "unitsKey": "Unitless",
-  "fileTypeVersion": 1,
-  "filetypeVersion": 1
+    ],
+    "topLevel": true,
+    "allAtoms": [
+        {
+            "atomType": "Output",
+            "x": 0.98,
+            "y": 0.5,
+            "uniqueID": "id-30",
+            "ioValues": [
+                {
+                    "name": "number or geometry",
+                    "ioValue": "__GEOMETRY_INPUT__"
+                }
+            ]
+        },
+        {
+            "atomType": "Input",
+            "x": 0.025384615384615384,
+            "y": 0.15384615384615385,
+            "uniqueID": "id-32",
+            "name": "Face1",
+            "type": "faceselect",
+            "selectedFaceData": {}
+        },
+        {
+            "atomType": "Input",
+            "x": 0.025384615384615384,
+            "y": 0.24615384615384617,
+            "uniqueID": "id-35",
+            "name": "Face2",
+            "type": "faceselect",
+            "selectedFaceData": {}
+        },
+        {
+            "atomType": "Input",
+            "x": 0.025384615384615384,
+            "y": 0.3384615384615385,
+            "uniqueID": "id-38",
+            "name": "Shapetomove",
+            "type": "geometry"
+        },
+        {
+            "atomType": "Code",
+            "x": 0.5339702760084926,
+            "y": 0.47678018575851394,
+            "uniqueID": "id-41",
+            "ioValues": [
+                {
+                    "name": "targetFace",
+                    "ioValue": "__GEOMETRY_INPUT__"
+                },
+                {
+                    "name": "sourceShape",
+                    "ioValue": "__GEOMETRY_INPUT__"
+                },
+                {
+                    "name": "faceThatAligns",
+                    "ioValue": "__GEOMETRY_INPUT__"
+                }
+            ],
+            "interpreterVersion": 1,
+            "code": "/**\n * =========================================================================\n *  ABUNDANCE CODE ATOM — Align Mesh to Face\n * =========================================================================\n *\n *  Move an entire mesh/solid so that one of its faces becomes coplanar with\n *  a target face.\n *\n *  INPUTS\n *  ------\n *  targetFace: Assembly\n *    A singleton leaf containing a bare replicad.Face to match to.\n *    Must be a single face, not a composite assembly.\n *\n *  sourceShape: Assembly\n *    The entire solid/mesh to be moved and rotated.\n *\n *  faceThatAligns: Assembly\n *    A singleton leaf containing a bare replicad.Face from the source shape.\n *    This face will be aligned to match the target face.\n *\n *  RETURN VALUE\n *  ------------\n *  Returns the entire source shape rotated and translated so that the\n *  specified face is coplanar with the target face.\n *\n *  HOW IT WORKS\n *  ============\n *  1. Extracts target face center and normal\n *  2. Extracts source face (from source shape) center and normal\n *  3. Calculates rotation needed to align source face → target face\n *  4. Applies the rotation and translation to the ENTIRE source shape\n *  5. Returns the moved shape\n *\n * =========================================================================\n */\n\nfunction run(\n  targetFace: Assembly,\n  sourceShape: Assembly,\n  faceThatAligns: Assembly,\n): Assembly {\n  // ── Validation ────────────────────────────────────────────────────────────\n  if (!targetFace.isLeaf()) {\n    throw new Error(\"targetFace must be singleton leaf\");\n  }\n  if (!faceThatAligns.isLeaf()) {\n    throw new Error(\"faceThatAligns must be singleton leaf\");\n  }\n\n  let targetReplFace: replicad.Face;\n  if (targetFace.geometry instanceof replicad.Face) {\n    targetReplFace = targetFace.geometry;\n  } else {\n    throw new Error(\"targetFace must be a bare face\");\n  }\n\n  let sourceReplFace: replicad.Face;\n  if (faceThatAligns.geometry instanceof replicad.Face) {\n    sourceReplFace = faceThatAligns.geometry;\n  } else {\n    throw new Error(\"faceThatAligns must be a bare face\");\n  }\n\n  // ── Extract target face properties ────────────────────────────────────────\n  const targetCenter = targetReplFace.pointOnSurface(0.5, 0.5);\n  const targetNormal = targetReplFace.normalAt(targetCenter);\n\n  // ── Extract source face properties ────────────────────────────────────────\n  const sourceCenter = sourceReplFace.pointOnSurface(0.5, 0.5);\n  const sourceNormal = sourceReplFace.normalAt(sourceCenter);\n\n  // ── Calculate rotation to align source face to target face ────────────────\n  const rotationAxis = sourceNormal.cross(targetNormal);\n  const rotationAngle = sourceNormal.getAngle(targetNormal);\n\n  // ── Apply rotation and translation to the entire source shape ──────────────\n  // Transform the entire source shape (not just the face)\n  const result = sourceShape.onLeafs((leaf) => {\n    let transformed = leaf.geometry;\n\n    // Rotate the entire geometry\n    if (rotationAngle !== 0) {\n      transformed = transformed.rotate(rotationAngle, rotationAxis);\n    }\n\n    // Translate the entire geometry to align face centers\n    transformed = transformed.translate(\n      targetCenter.add(sourceCenter.multiply(-1))\n    );\n\n    return new Assembly({\n      ...leaf,\n      geometry: transformed,\n    });\n  });\n\n  if (result != null) {\n    return result;\n  } else {\n    throw new Error(\"result unexpectedly null\");\n  }\n}\n",
+            "compiledCode": "\"use strict\";\n/**\n * =========================================================================\n *  ABUNDANCE CODE ATOM — Align Mesh to Face\n * =========================================================================\n *\n *  Move an entire mesh/solid so that one of its faces becomes coplanar with\n *  a target face.\n *\n *  INPUTS\n *  ------\n *  targetFace: Assembly\n *    A singleton leaf containing a bare replicad.Face to match to.\n *    Must be a single face, not a composite assembly.\n *\n *  sourceShape: Assembly\n *    The entire solid/mesh to be moved and rotated.\n *\n *  faceThatAligns: Assembly\n *    A singleton leaf containing a bare replicad.Face from the source shape.\n *    This face will be aligned to match the target face.\n *\n *  RETURN VALUE\n *  ------------\n *  Returns the entire source shape rotated and translated so that the\n *  specified face is coplanar with the target face.\n *\n *  HOW IT WORKS\n *  ============\n *  1. Extracts target face center and normal\n *  2. Extracts source face (from source shape) center and normal\n *  3. Calculates rotation needed to align source face → target face\n *  4. Applies the rotation and translation to the ENTIRE source shape\n *  5. Returns the moved shape\n *\n * =========================================================================\n */\nfunction run(targetFace, sourceShape, faceThatAligns) {\n    // ── Validation ────────────────────────────────────────────────────────────\n    if (!targetFace.isLeaf()) {\n        throw new Error(\"targetFace must be singleton leaf\");\n    }\n    if (!faceThatAligns.isLeaf()) {\n        throw new Error(\"faceThatAligns must be singleton leaf\");\n    }\n    let targetReplFace;\n    if (targetFace.geometry instanceof replicad.Face) {\n        targetReplFace = targetFace.geometry;\n    }\n    else {\n        throw new Error(\"targetFace must be a bare face\");\n    }\n    let sourceReplFace;\n    if (faceThatAligns.geometry instanceof replicad.Face) {\n        sourceReplFace = faceThatAligns.geometry;\n    }\n    else {\n        throw new Error(\"faceThatAligns must be a bare face\");\n    }\n    // ── Extract target face properties ────────────────────────────────────────\n    const targetCenter = targetReplFace.pointOnSurface(0.5, 0.5);\n    const targetNormal = targetReplFace.normalAt(targetCenter);\n    // ── Extract source face properties ────────────────────────────────────────\n    const sourceCenter = sourceReplFace.pointOnSurface(0.5, 0.5);\n    const sourceNormal = sourceReplFace.normalAt(sourceCenter);\n    // ── Calculate rotation to align source face to target face ────────────────\n    const rotationAxis = sourceNormal.cross(targetNormal);\n    const rotationAngle = sourceNormal.getAngle(targetNormal);\n    // ── Apply rotation and translation to the entire source shape ──────────────\n    // Transform the entire source shape (not just the face)\n    const result = sourceShape.onLeafs((leaf) => {\n        let transformed = leaf.geometry;\n        // Rotate the entire geometry\n        if (rotationAngle !== 0) {\n            transformed = transformed.rotate(rotationAngle, rotationAxis);\n        }\n        // Translate the entire geometry to align face centers\n        transformed = transformed.translate(targetCenter.add(sourceCenter.multiply(-1)));\n        return new Assembly({\n            ...leaf,\n            geometry: transformed,\n        });\n    });\n    if (result != null) {\n        return result;\n    }\n    else {\n        throw new Error(\"result unexpectedly null\");\n    }\n}\n"
+        },
+        {
+            "atomType": "Input",
+            "x": 0.025384615384615384,
+            "y": 0.4307692307692308,
+            "uniqueID": "id-55",
+            "name": "edge",
+            "type": "edgeselect",
+            "selectedEdgeData": {}
+        }
+    ],
+    "allConnectors": [
+        {
+            "ap2Name": "targetFace",
+            "ap1ID": "id-32",
+            "ap2ID": "id-41"
+        },
+        {
+            "ap2Name": "faceThatAligns",
+            "ap1ID": "id-35",
+            "ap2ID": "id-41"
+        },
+        {
+            "ap2Name": "sourceShape",
+            "ap1ID": "id-38",
+            "ap2ID": "id-41"
+        },
+        {
+            "ap2Name": "number or geometry",
+            "ap1ID": "id-41",
+            "ap2ID": "id-30"
+        }
+    ],
+    "unitsKey": "Unitless",
+    "fileTypeVersion": 1,
+    "filetypeVersion": 1
 }
